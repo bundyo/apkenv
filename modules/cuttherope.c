@@ -67,6 +67,7 @@ cuttherope_video_banner_finished()
             cuttherope_priv.global);
 }
 
+char *cuttherope_libname;
 
 static jobject
 cuttherope_CallObjectMethodV(JNIEnv *, jobject, jmethodID, va_list) SOFTFP;
@@ -159,6 +160,7 @@ cuttherope_try_init(struct SupportModule *self)
             self->priv->nativeInit != NULL &&
             self->priv->nativeResize != NULL &&
             self->priv->nativeTick != NULL &&
+            self->priv->nativeRender != NULL &&
             self->priv->videoBannerFinished != NULL);
 }
 

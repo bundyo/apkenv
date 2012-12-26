@@ -29,8 +29,8 @@
  **/
 
 /**
- * Angry Birds Space support module 0.6 - By: Arto Rusanen
- * 
+ * Swords & Soldiers support module 0.1
+ * by Bundyo
  **/
 
 #ifdef APKENV_DEBUG
@@ -46,30 +46,27 @@
 #include "SDL/SDL.h"
 #include <assert.h>
 
-// Typedefs. Got these from classes.dex (http://stackoverflow.com/questions/1249973/decompiling-dex-into-java-sourcecode)
-typedef jboolean (*angrybirds_init_t)(JNIEnv *env, jobject obj, jint paramInt1, jint paramInt2, jstring paramString) SOFTFP;
-typedef jboolean (*angrybirds_resize_t)(JNIEnv *env, jobject obj, jint width, jint height) SOFTFP;
-typedef void (*angrybirds_input_t)(JNIEnv *env, jobject obj, jint action, jfloat x, jfloat y, jint finger) SOFTFP;
-typedef jboolean (*angrybirds_update_t)(JNIEnv *env, jobject obj) SOFTFP;
-typedef void (*angrybirds_pause_t)(JNIEnv *env, jobject obj) SOFTFP;
-typedef void (*angrybirds_resume_t)(JNIEnv *env, jobject obj) SOFTFP;
-typedef void (*angrybirds_mixdata_t)(JNIEnv *env, jobject obj, jlong paramLong, jbyteArray paramArrayOfByte, jint paramInt) SOFTFP;
-typedef void (*angrybirds_deinit_t)(JNIEnv *env, jobject obj) SOFTFP;
-
+typedef void (*swords_init_t)(JNIEnv *env, jobject obj, jstring paramString1, jstring paramString2, void *paramContext, jstring paramString3) SOFTFP;
+typedef void (*swords_input_t)(JNIEnv *env, jobject obj, jint action, jfloat *x, jfloat *y, jint *finger) SOFTFP;
+typedef jboolean (*swords_update_t)(JNIEnv *env, jobject obj) SOFTFP;
+typedef void (*swords_pause_t)(JNIEnv *env, jobject obj) SOFTFP;
+typedef void (*swords_resume_t)(JNIEnv *env, jobject obj) SOFTFP;
+typedef void (*swords_resize_t)(JNIEnv *env, jobject obj, jint paramInt1, jint paramInt2) SOFTFP;
+typedef void (*swords_deinit_t)(JNIEnv *env, jobject obj) SOFTFP;
 
 struct SupportModulePriv {
     jni_onload_t JNI_OnLoad;
-    angrybirds_init_t native_init;
-    angrybirds_resize_t native_resize;
-    angrybirds_update_t native_update;
-    angrybirds_input_t native_input;
-    angrybirds_pause_t native_pause;
-    angrybirds_resume_t native_resume;
-    angrybirds_mixdata_t native_mixdata;
-    angrybirds_deinit_t native_deinit;
+    jni_onunload_t JNI_OnUnLoad;
+    swords_init_t native_init;
+    swords_update_t native_update;
+    swords_input_t native_input;
+    swords_pause_t native_pause;
+    swords_resume_t native_resume;
+    swords_resize_t native_resize;
+    swords_deinit_t native_deinit;
     const char *myHome;
 };
-static struct SupportModulePriv angrybirds_priv;
+static struct SupportModulePriv swords_priv;
 
 /* Audio specs and handle */
 SDL_AudioSpec *desired, *obtained;
@@ -78,12 +75,12 @@ jlong audioHandle;
 /* Global application state so we can call this from override thingie */
 struct GlobalState *global;
 
-char *angrybirds_libname;
+char *swords_libname = "libverde.so";
 
 /* Fill audio buffer */
 void my_audio_callback(void *ud, Uint8 *stream, int len)
 {
-    angrybirds_priv.native_mixdata(ENV(global), VM(global), audioHandle, stream, len);
+    //swords_priv.native_mixdata(ENV(global), VM(global), audioHandle, stream, len);
 }
 
 
@@ -111,7 +108,7 @@ JNIEnv_NewObjectV(JNIEnv *env, jclass p1, jmethodID p2, va_list p3)
 {
     struct dummy_jclass *clazz = p1;
     MODULE_DEBUG_PRINTF("module_JNIEnv_NewObjectV(%x, %s, %s)\n", p1, p2->name, clazz->name);
-    if (strcmp(clazz->name, "com/rovio/ka3d/AudioOutput") == 0)
+    if (strcmp(clazz->name, "com/ideaworks3d/airplay/SoundPlayer") == 0)
     {
         /* Open the audio device */
         desired = malloc(sizeof(SDL_AudioSpec));
@@ -122,7 +119,7 @@ JNIEnv_NewObjectV(JNIEnv *env, jclass p1, jmethodID p2, va_list p3)
         desired->freq = va_arg(p3, int);
         desired->channels = va_arg(p3, int);
         desired->format = AUDIO_S16SYS;
-        jint bitrate = va_arg(p3, int); 
+        jint bitrate = va_arg(p3, int);
         desired->samples = va_arg(p3, int) / 8;
         desired->callback=my_audio_callback;
         desired->userdata=NULL;
@@ -140,23 +137,17 @@ JNIEnv_NewObjectV(JNIEnv *env, jclass p1, jmethodID p2, va_list p3)
 jobject
 JNIEnv_CallObjectMethodV(JNIEnv *env, jobject p1, jmethodID p2, va_list p3)
 {
-    MODULE_DEBUG_PRINTF("module_JNIEnv_CallObjectMethodV(%x, %s, %s, ...)\n", p1, p2->name, p2->sig);
-    if (strcmp(p2->name, "readFile") == 0)
-    {
-        struct dummy_jstring *str = va_arg(p3,struct dummy_jstring*);
-        char tmp[PATH_MAX];
-        strcpy(tmp, "assets/");
-        strcat(tmp, str->data);
-
-        size_t file_size;
-	struct dummy_byte_array *result = malloc(sizeof(struct dummy_byte_array));
-
-        global->read_file(tmp, &result->data, &file_size);
-
-        result->size = file_size;
-        return result;
+    if (strcmp(p2->name, "getInstallationId") == 0) {
+        return (*env)->NewStringUTF(env, "");
+    } else if (strcmp(p2->name, "getLanguageCode") == 0) {
+        return (*env)->NewStringUTF(env, "en");
+    } else if (strcmp(p2->name, "playSound") == 0) {
+        // TODO: Play sound (doh!)
+    } else {
+        printf("Do not know what to do: %s\n", p2->name);
+        exit(1);
     }
-    return NULL;
+    return GLOBAL_J(env);
 }
 
 /* DeleteLocalRef override. Free some memory :) */
@@ -172,16 +163,27 @@ JNIEnv_DeleteLocalRef(JNIEnv* p0, jobject p1)
 }
 
 static int
-angrybirds_try_init(struct SupportModule *self)
+swords_try_init(struct SupportModule *self)
 {
-    self->priv->native_init = (angrybirds_init_t)LOOKUP_M("ka3d_MyRenderer_nativeInit");
-    self->priv->native_resize = (angrybirds_resize_t)LOOKUP_M("ka3d_MyRenderer_nativeResize");
-    self->priv->native_input = (angrybirds_input_t)LOOKUP_M("ka3d_MyRenderer_nativeInput");
-    self->priv->native_update = (angrybirds_update_t)LOOKUP_M("ka3d_MyRenderer_nativeUpdate");
-    self->priv->native_pause = (angrybirds_pause_t)LOOKUP_M("ka3d_MyRenderer_nativePause");
-    self->priv->native_resume = (angrybirds_resume_t)LOOKUP_M("ka3d_MyRenderer_nativeResume");
-    self->priv->native_mixdata = (angrybirds_mixdata_t)LOOKUP_M("ka3d_AudioOutput_nativeMixData");
-    self->priv->native_deinit = (angrybirds_deinit_t)LOOKUP_M("ka3d_MyRenderer_nativeDeinit");
+    printf("Trying %s\n", LOOKUP_M("rendererInit"));
+
+    self->priv->JNI_OnLoad = (jni_onload_t)LOOKUP_M("JNI_OnLoad");
+    self->priv->native_init = (swords_init_t)LOOKUP_M("rendererInit");
+    self->priv->native_input = (swords_input_t)LOOKUP_M("rendererTouchEnded");
+    self->priv->native_update = (swords_update_t)LOOKUP_M("rendererDrawFrame");
+    self->priv->native_pause = (swords_pause_t)LOOKUP_M("onGamePause");
+    self->priv->native_resume = (swords_resume_t)LOOKUP_M("onGameResume");
+    self->priv->native_resize = (swords_resize_t)LOOKUP_M("rendererResized");
+    //self->priv->native_deinit = (swords_deinit_t)LOOKUP_M("shutdownNative");
+    
+    printf("OnLoad: %s\n", self->priv->JNI_OnLoad ? "true" : "false");
+    printf("init: %s\n", self->priv->native_init ? "true" : "false");
+    printf("input: %s\n", self->priv->native_input ? "true" : "false");
+    printf("update: %s\n", self->priv->native_update ? "true" : "false");
+    printf("pause: %s\n", self->priv->native_pause ? "true" : "false");
+    printf("resume: %s\n", self->priv->native_resume ? "true" : "false");
+    printf("resize: %s\n", self->priv->native_resize ? "true" : "false");
+    //printf("deinit: %s\n", self->priv->native_deinit ? "true" : "false");
 
     /* Overrides for JNIEnv_ */
     self->override_env.CallObjectMethodV = JNIEnv_CallObjectMethodV;
@@ -189,56 +191,71 @@ angrybirds_try_init(struct SupportModule *self)
     self->override_env.CallVoidMethodV = JNIEnv_CallVoidMethodV;
     self->override_env.NewObjectV = JNIEnv_NewObjectV;
 
-    return (self->priv->native_init != NULL &&
-            self->priv->native_resize != NULL &&
+    return (self->priv->JNI_OnLoad != NULL &&
+            self->priv->native_init != NULL &&
             self->priv->native_input != NULL &&
             self->priv->native_update != NULL &&
             self->priv->native_pause != NULL &&
-            self->priv->native_resume != NULL &&
-            self->priv->native_mixdata != NULL &&
-            self->priv->native_deinit != NULL);
+            self->priv->native_resize != NULL &&
+            self->priv->native_resume != NULL /*&&
+            self->priv->native_deinit != NULL*/);
 }
 
 static void
-angrybirds_init(struct SupportModule *self, int width, int height, const char *home)
+swords_init(struct SupportModule *self, int width, int height, const char *home)
 {
     MODULE_DEBUG_PRINTF("Module: Init(%i,%i,%s)\n",width,height,home);
 
     self->priv->myHome = strdup(home);
     global = GLOBAL_M;
-    self->priv->native_init(ENV_M, GLOBAL_M, width, height, GLOBAL_M->env->NewStringUTF(ENV_M, home));
+
+    self->priv->JNI_OnLoad(VM_M, NULL);
+
+    self->priv->native_init(ENV_M, GLOBAL_M, GLOBAL_M->env->NewStringUTF(ENV_M, global->apk_filename), 
+                                             GLOBAL_M->env->NewStringUTF(ENV_M, self->priv->myHome), 
+                                             0, 
+                                             "");
 }
 
 static void
-angrybirds_input(struct SupportModule *self, int event, int x, int y, int finger)
+swords_input(struct SupportModule *self, int event, int x, int y, int finger)
 {
-    self->priv->native_input(ENV_M, GLOBAL_M, event, x, y, finger);
+    self->priv->native_input(ENV_M, GLOBAL_M, event, (float*) x, (float*) y, (int*) finger);
 }
 
 static void
-angrybirds_update(struct SupportModule *self)
+swords_update(struct SupportModule *self)
 {
     self->priv->native_update(ENV_M, GLOBAL_M);
 }
 
 static void
-angrybirds_deinit(struct SupportModule *self)
+swords_deinit(struct SupportModule *self)
 {
     self->priv->native_deinit(ENV_M, GLOBAL_M);
+
+    self->priv->JNI_OnUnLoad(VM_M, NULL);
+
     SDL_CloseAudio();
 }
 
 static void
-angrybirds_pause(struct SupportModule *self)
+swords_pause(struct SupportModule *self)
 {
     self->priv->native_pause(ENV_M, GLOBAL_M);
 }
 
 static void
-angrybirds_resume(struct SupportModule *self)
+swords_resume(struct SupportModule *self)
 {
     self->priv->native_resume(ENV_M, GLOBAL_M);
 }
 
-APKENV_MODULE(angrybirds, MODULE_PRIORITY_GAME)
+static void
+swords_resize(struct SupportModule *self, int paramInt1, int paramInt2)
+{
+    self->priv->native_resize(ENV_M, GLOBAL_M, paramInt1, paramInt2);
+}
+
+APKENV_MODULE(swords, MODULE_PRIORITY_GAME)
 

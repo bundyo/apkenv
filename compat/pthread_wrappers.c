@@ -223,6 +223,33 @@ my_pthread_attr_setstacksize(pthread_attr_t *__attr, size_t stacksize)
     return pthread_attr_setstacksize (realattr,stacksize);
 }
 
+int
+my_pthread_attr_setstack(pthread_attr_t *__attr, void *stackaddr, size_t stacksize)
+{
+    assert(__attr != NULL);
+    pthread_attr_t *realattr = (pthread_attr_t *) *(int *) __attr;
+    assert(realattr != NULL);
+    return pthread_attr_setstack (realattr, stackaddr, stacksize);
+}
+
+int
+my_pthread_attr_setschedparam(pthread_attr_t *__attr, const struct sched_param *param)
+{
+    assert(__attr != NULL);
+    pthread_attr_t *realattr = (pthread_attr_t *) *(int *) __attr;
+    assert(realattr != NULL);
+    return pthread_attr_setschedparam (realattr, param);
+}
+
+int
+my_pthread_attr_setschedpolicy(pthread_attr_t *__attr, int policy)
+{
+    assert(__attr != NULL);
+    pthread_attr_t *realattr = (pthread_attr_t *) *(int *) __attr;
+    assert(realattr != NULL);
+    return pthread_attr_setschedpolicy (realattr, policy);
+}
+
 void *
 start_wrapped_thread(void *arg)
 {

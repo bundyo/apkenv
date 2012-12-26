@@ -1,6 +1,9 @@
 {"pthread_attr_init", my_pthread_attr_init},
 {"pthread_attr_setdetachstate", my_pthread_attr_setdetachstate},
 {"pthread_attr_setstacksize", my_pthread_attr_setstacksize},
+{"pthread_attr_setstack", my_pthread_attr_setstack},
+{"pthread_attr_setschedparam", my_pthread_attr_setschedparam},
+{"pthread_attr_setschedpolicy", my_pthread_attr_setschedpolicy},
 {"pthread_attr_destroy", my_pthread_attr_destroy},
 
 {"pthread_cond_init", my_pthread_cond_init},

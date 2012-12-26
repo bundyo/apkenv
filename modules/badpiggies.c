@@ -29,8 +29,8 @@
  **/
 
 /**
- * Angry Birds Space support module 0.6 - By: Arto Rusanen
- * 
+ * Bad Piggies support module 0.1 
+ * by Bundyo
  **/
 
 #ifdef APKENV_DEBUG
@@ -47,29 +47,25 @@
 #include <assert.h>
 
 // Typedefs. Got these from classes.dex (http://stackoverflow.com/questions/1249973/decompiling-dex-into-java-sourcecode)
-typedef jboolean (*angrybirds_init_t)(JNIEnv *env, jobject obj, jint paramInt1, jint paramInt2, jstring paramString) SOFTFP;
-typedef jboolean (*angrybirds_resize_t)(JNIEnv *env, jobject obj, jint width, jint height) SOFTFP;
-typedef void (*angrybirds_input_t)(JNIEnv *env, jobject obj, jint action, jfloat x, jfloat y, jint finger) SOFTFP;
-typedef jboolean (*angrybirds_update_t)(JNIEnv *env, jobject obj) SOFTFP;
-typedef void (*angrybirds_pause_t)(JNIEnv *env, jobject obj) SOFTFP;
-typedef void (*angrybirds_resume_t)(JNIEnv *env, jobject obj) SOFTFP;
-typedef void (*angrybirds_mixdata_t)(JNIEnv *env, jobject obj, jlong paramLong, jbyteArray paramArrayOfByte, jint paramInt) SOFTFP;
-typedef void (*angrybirds_deinit_t)(JNIEnv *env, jobject obj) SOFTFP;
-
+typedef void (*jni_init_t)(JNIEnv *env, jobject obj) SOFTFP;
+typedef void (*badpiggies_init_t)(JNIEnv *env, jobject obj, jint paramInt1, jint paramInt2) SOFTFP;
+typedef void (*badpiggies_input_t)(JNIEnv *env, jobject obj, jint action, jfloat x, jfloat y, jint finger, jlong paramLong, jint paramInt) SOFTFP;
+typedef jboolean (*badpiggies_update_t)(JNIEnv *env, jobject obj) SOFTFP;
+typedef jboolean (*badpiggies_pause_t)(JNIEnv *env, jobject obj) SOFTFP;
+typedef void (*badpiggies_resume_t)(JNIEnv *env, jobject obj) SOFTFP;
+typedef void (*badpiggies_deinit_t)(JNIEnv *env, jobject obj) SOFTFP;
 
 struct SupportModulePriv {
     jni_onload_t JNI_OnLoad;
-    angrybirds_init_t native_init;
-    angrybirds_resize_t native_resize;
-    angrybirds_update_t native_update;
-    angrybirds_input_t native_input;
-    angrybirds_pause_t native_pause;
-    angrybirds_resume_t native_resume;
-    angrybirds_mixdata_t native_mixdata;
-    angrybirds_deinit_t native_deinit;
-    const char *myHome;
+    jni_init_t initJni;
+    badpiggies_init_t native_init;
+    badpiggies_update_t native_update;
+    badpiggies_input_t native_input;
+    badpiggies_pause_t native_pause;
+    badpiggies_resume_t native_resume;
+    badpiggies_deinit_t native_deinit;
 };
-static struct SupportModulePriv angrybirds_priv;
+static struct SupportModulePriv badpiggies_priv;
 
 /* Audio specs and handle */
 SDL_AudioSpec *desired, *obtained;
@@ -78,18 +74,18 @@ jlong audioHandle;
 /* Global application state so we can call this from override thingie */
 struct GlobalState *global;
 
-char *angrybirds_libname;
+char *badpiggies_libname = "libunity.so";
 
 /* Fill audio buffer */
 void my_audio_callback(void *ud, Uint8 *stream, int len)
 {
-    angrybirds_priv.native_mixdata(ENV(global), VM(global), audioHandle, stream, len);
+//    badpiggies_priv.native_mixdata(ENV(global), VM(global), audioHandle, stream, len);
 }
 
 
 /* CallVoidMethodV override. Signal when to start or stop audio */
-void
-JNIEnv_CallVoidMethodV(JNIEnv* p0, jobject p1, jmethodID p2, va_list p3)
+static void
+badpiggies_CallVoidMethodV(JNIEnv* p0, jobject p1, jmethodID p2, va_list p3)
 {
     MODULE_DEBUG_PRINTF("module_JNIEnv_CallVoidMethodV(%x, %s, %s)\n", p1, p2->name, p2->sig);
     if (strcmp(p2->name, "startOutput") == 0)
@@ -106,12 +102,12 @@ JNIEnv_CallVoidMethodV(JNIEnv* p0, jobject p1, jmethodID p2, va_list p3)
 }
 
 /* NewObjectV override. Initialize audio output */
-jobject
-JNIEnv_NewObjectV(JNIEnv *env, jclass p1, jmethodID p2, va_list p3)
+static jobject
+badpiggies_NewObjectV(JNIEnv *env, jclass p1, jmethodID p2, va_list p3)
 {
     struct dummy_jclass *clazz = p1;
     MODULE_DEBUG_PRINTF("module_JNIEnv_NewObjectV(%x, %s, %s)\n", p1, p2->name, clazz->name);
-    if (strcmp(clazz->name, "com/rovio/ka3d/AudioOutput") == 0)
+    if (strcmp(clazz->name, "org/fmod/FMODAudioDevice") == 0)
     {
         /* Open the audio device */
         desired = malloc(sizeof(SDL_AudioSpec));
@@ -137,8 +133,8 @@ JNIEnv_NewObjectV(JNIEnv *env, jclass p1, jmethodID p2, va_list p3)
 }
 
 /* CallObjectMethodV override. AB calls readFile to read data from apk */
-jobject
-JNIEnv_CallObjectMethodV(JNIEnv *env, jobject p1, jmethodID p2, va_list p3)
+static jobject
+badpiggies_CallObjectMethodV(JNIEnv *env, jobject p1, jmethodID p2, va_list p3)
 {
     MODULE_DEBUG_PRINTF("module_JNIEnv_CallObjectMethodV(%x, %s, %s, ...)\n", p1, p2->name, p2->sig);
     if (strcmp(p2->name, "readFile") == 0)
@@ -160,8 +156,8 @@ JNIEnv_CallObjectMethodV(JNIEnv *env, jobject p1, jmethodID p2, va_list p3)
 }
 
 /* DeleteLocalRef override. Free some memory :) */
-void
-JNIEnv_DeleteLocalRef(JNIEnv* p0, jobject p1)
+static void
+badpiggies_DeleteLocalRef(JNIEnv* p0, jobject p1)
 {
     MODULE_DEBUG_PRINTF("JNIEnv_DeleteLocalRef(%x)\n", p1);
     if (p1 == GLOBAL_J(p0) || p1 == NULL) {
@@ -172,73 +168,90 @@ JNIEnv_DeleteLocalRef(JNIEnv* p0, jobject p1)
 }
 
 static int
-angrybirds_try_init(struct SupportModule *self)
+badpiggies_try_init(struct SupportModule *self)
 {
-    self->priv->native_init = (angrybirds_init_t)LOOKUP_M("ka3d_MyRenderer_nativeInit");
-    self->priv->native_resize = (angrybirds_resize_t)LOOKUP_M("ka3d_MyRenderer_nativeResize");
-    self->priv->native_input = (angrybirds_input_t)LOOKUP_M("ka3d_MyRenderer_nativeInput");
-    self->priv->native_update = (angrybirds_update_t)LOOKUP_M("ka3d_MyRenderer_nativeUpdate");
-    self->priv->native_pause = (angrybirds_pause_t)LOOKUP_M("ka3d_MyRenderer_nativePause");
-    self->priv->native_resume = (angrybirds_resume_t)LOOKUP_M("ka3d_MyRenderer_nativeResume");
-    self->priv->native_mixdata = (angrybirds_mixdata_t)LOOKUP_M("ka3d_AudioOutput_nativeMixData");
-    self->priv->native_deinit = (angrybirds_deinit_t)LOOKUP_M("ka3d_MyRenderer_nativeDeinit");
+    self->priv->initJni = (jni_init_t)LOOKUP_M("initJni");
+    self->priv->JNI_OnLoad = (jni_onload_t)LOOKUP_M("JNI_OnLoad");
+    self->priv->native_init = (badpiggies_init_t)LOOKUP_M("nativeInit");
+    self->priv->native_input = (badpiggies_input_t)LOOKUP_M("nativeTouch");
+    self->priv->native_update = (badpiggies_update_t)LOOKUP_M("nativeRender");
+    self->priv->native_pause = (badpiggies_pause_t)LOOKUP_M("nativePause");
+    self->priv->native_resume = (badpiggies_resume_t)LOOKUP_M("nativeResume");
+    self->priv->native_deinit = (badpiggies_deinit_t)LOOKUP_M("nativeDone");
+
+    //printf("initJni: %s\n", self->priv->initJni ? "true" : "false");
+    printf("OnLoad: %s\n", self->priv->JNI_OnLoad ? "true" : "false");
+    printf("init: %s\n", self->priv->native_init ? "true" : "false");
+    printf("input: %s\n", self->priv->native_input ? "true" : "false");
+    printf("update: %s\n", self->priv->native_update ? "true" : "false");
+    printf("pause: %s\n", self->priv->native_pause ? "true" : "false");
+    printf("resume: %s\n", self->priv->native_resume ? "true" : "false");
+    printf("deinit: %s\n", self->priv->native_deinit ? "true" : "false");
 
     /* Overrides for JNIEnv_ */
-    self->override_env.CallObjectMethodV = JNIEnv_CallObjectMethodV;
-    self->override_env.DeleteLocalRef = JNIEnv_DeleteLocalRef;
-    self->override_env.CallVoidMethodV = JNIEnv_CallVoidMethodV;
-    self->override_env.NewObjectV = JNIEnv_NewObjectV;
+    self->override_env.CallObjectMethodV = badpiggies_CallObjectMethodV;
+    self->override_env.DeleteLocalRef = badpiggies_DeleteLocalRef;
+    self->override_env.CallVoidMethodV = badpiggies_CallVoidMethodV;
+    self->override_env.NewObjectV = badpiggies_NewObjectV;
 
-    return (self->priv->native_init != NULL &&
-            self->priv->native_resize != NULL &&
+    return (self->priv->initJni != NULL &&
+            self->priv->JNI_OnLoad != NULL &&
+            self->priv->native_init != NULL &&
             self->priv->native_input != NULL &&
             self->priv->native_update != NULL &&
             self->priv->native_pause != NULL &&
             self->priv->native_resume != NULL &&
-            self->priv->native_mixdata != NULL &&
             self->priv->native_deinit != NULL);
 }
 
 static void
-angrybirds_init(struct SupportModule *self, int width, int height, const char *home)
+badpiggies_init(struct SupportModule *self, int width, int height, const char *home)
 {
-    MODULE_DEBUG_PRINTF("Module: Init(%i,%i,%s)\n",width,height,home);
+    MODULE_DEBUG_PRINTF("Module: Init(%i,%i,%s)\n",width,height);
 
-    self->priv->myHome = strdup(home);
+    self->priv->JNI_OnLoad(VM_M, NULL);
+
+    //self->priv->myHome = strdup(home);
     global = GLOBAL_M;
-    self->priv->native_init(ENV_M, GLOBAL_M, width, height, GLOBAL_M->env->NewStringUTF(ENV_M, home));
+    self->priv->native_init(ENV_M, GLOBAL_M, width, height);
 }
 
 static void
-angrybirds_input(struct SupportModule *self, int event, int x, int y, int finger)
+badpiggies_input(struct SupportModule *self, int event, int x, int y, int finger)
 {
-    self->priv->native_input(ENV_M, GLOBAL_M, event, x, y, finger);
+    self->priv->native_input(ENV_M, GLOBAL_M, event, x, y, finger, 0, 0);
 }
 
 static void
-angrybirds_update(struct SupportModule *self)
+badpiggies_update(struct SupportModule *self)
 {
     self->priv->native_update(ENV_M, GLOBAL_M);
 }
 
 static void
-angrybirds_deinit(struct SupportModule *self)
+jni_init(struct SupportModule *self)
+{
+    self->priv->initJni(ENV_M, GLOBAL_M);
+}
+
+static void
+badpiggies_deinit(struct SupportModule *self)
 {
     self->priv->native_deinit(ENV_M, GLOBAL_M);
     SDL_CloseAudio();
 }
 
 static void
-angrybirds_pause(struct SupportModule *self)
+badpiggies_pause(struct SupportModule *self)
 {
     self->priv->native_pause(ENV_M, GLOBAL_M);
 }
 
 static void
-angrybirds_resume(struct SupportModule *self)
+badpiggies_resume(struct SupportModule *self)
 {
     self->priv->native_resume(ENV_M, GLOBAL_M);
 }
 
-APKENV_MODULE(angrybirds, MODULE_PRIORITY_GAME)
+APKENV_MODULE(badpiggies, MODULE_PRIORITY_GAME)
 

@@ -65,6 +65,7 @@ struct SupportModulePriv {
 };
 static struct SupportModulePriv worldofgoo_priv;
 
+char *worldofgoo_libname;
 
 struct ZipFileIndex {
     char filename[1024];

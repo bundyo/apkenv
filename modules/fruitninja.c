@@ -77,6 +77,8 @@ static struct SupportModulePriv fruitninja_priv;
 /* Global application state so we can call this from override thingie */
 struct GlobalState *global;
 
+char *fruitninja_libname;
+
 typedef struct
 {
     char* name;

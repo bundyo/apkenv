@@ -55,6 +55,8 @@ struct SupportModulePriv {
 };
 static struct SupportModulePriv trg2_priv;
 
+char *trg2_libname;
+
 static int
 trg2_try_init(struct SupportModule *self)
 {

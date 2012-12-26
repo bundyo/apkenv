@@ -46,6 +46,7 @@ struct SupportModule {
     struct GlobalState *global;
     struct SupportModulePriv *priv;
     char *filename;
+    char *libname;
     int priority;
 
     struct JNINativeInterface override_env;

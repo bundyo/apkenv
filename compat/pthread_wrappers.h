@@ -85,6 +85,12 @@ my_pthread_attr_setdetachstate(pthread_attr_t *__attr,
         int detachstate);
 int
 my_pthread_attr_setstacksize(pthread_attr_t *__attr, size_t stacksize);
+int
+my_pthread_attr_setstack(pthread_attr_t *__attr, void *stackaddr, size_t stacksize);
+int
+my_pthread_attr_setschedparam(pthread_attr_t *__attr, const struct sched_param *param);
+int
+my_pthread_attr_setschedpolicy(pthread_attr_t *__attr, int policy);
 
 struct WrappedThread {
     void *(*start_routine)(void *);

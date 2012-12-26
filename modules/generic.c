@@ -40,6 +40,8 @@ struct SupportModulePriv {
 };
 static struct SupportModulePriv generic_priv;
 
+char *generic_libname;
+
 static int
 generic_try_init(struct SupportModule *self)
 {

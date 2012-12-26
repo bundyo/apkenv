@@ -274,7 +274,7 @@ operation(const char *operation, const char *filename)
         fprintf(desktop,
                 "[Desktop Entry]\n"
                 "Name=%s\n"
-                "Exec=invoker --single-instance --type=e %s %s\n"
+                "Exec=%s %s\n"
                 "Icon=%s\n"
                 "Terminal=false\n"
                 "Type=Application\n"
@@ -323,10 +323,30 @@ int main(int argc, char **argv)
     global.apklib_handle = apk_open(global.apk_filename);
     global.support_modules = NULL;
 
-    const char *shlib = apk_get_shared_library(global.apklib_handle);
+    load_modules(".");
+    load_modules("/opt/apkenv/modules");
+    if (global.support_modules == NULL) {
+        printf("No support modules found.\n");
+    }
+
+    const char *shlib;
+    struct SupportModule *module = global.support_modules;
+    while (module != NULL) {
+        if (module->libname != NULL) {
+            shlib = apk_get_shared_library(global.apklib_handle, module->libname);
+            if (shlib != NULL) {
+                break;
+            }
+        }
+        module = module->next;
+    }
+
     if (shlib == NULL) {
-        printf("Not a native APK.\n");
-        return 0;
+        shlib = apk_get_shared_library(global.apklib_handle, NULL);
+        if (shlib == NULL) {
+            printf("Not a native APK.\n");
+            return 0;
+        }
     }
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK) < 0) {
@@ -383,19 +403,18 @@ int main(int argc, char **argv)
     global.jni_library = android_dlopen(shlib, RTLD_LAZY);
     unlink(shlib);
     if (!(global.jni_library)) {
-        printf("Missing library dependencies.\n");
+        printf("Missing library dependencies. Found methods:\n");
+        /*tmp = global.method_table;
+        while (*tmp) {
+            printf("    %s\n", *tmp);
+            tmp++;
+        }*/
         return 0;
     }
 
-    load_modules(".");
-    load_modules("/opt/apkenv/modules");
-    if (global.support_modules == NULL) {
-        printf("No support modules found.\n");
-    }
-
     /* Search for a suitable module to handle the library */
-    struct SupportModule *module = global.support_modules;
     while (module != NULL) {
+        printf("Trying %s\n", module->filename);
         if (module->try_init(module)) {
             break;
         }

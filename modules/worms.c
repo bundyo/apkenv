@@ -29,8 +29,8 @@
  **/
 
 /**
- * Angry Birds Space support module 0.6 - By: Arto Rusanen
- * 
+ * Worms support module 0.1
+ * by Bundyo
  **/
 
 #ifdef APKENV_DEBUG
@@ -47,29 +47,36 @@
 #include <assert.h>
 
 // Typedefs. Got these from classes.dex (http://stackoverflow.com/questions/1249973/decompiling-dex-into-java-sourcecode)
-typedef jboolean (*angrybirds_init_t)(JNIEnv *env, jobject obj, jint paramInt1, jint paramInt2, jstring paramString) SOFTFP;
-typedef jboolean (*angrybirds_resize_t)(JNIEnv *env, jobject obj, jint width, jint height) SOFTFP;
-typedef void (*angrybirds_input_t)(JNIEnv *env, jobject obj, jint action, jfloat x, jfloat y, jint finger) SOFTFP;
-typedef jboolean (*angrybirds_update_t)(JNIEnv *env, jobject obj) SOFTFP;
-typedef void (*angrybirds_pause_t)(JNIEnv *env, jobject obj) SOFTFP;
-typedef void (*angrybirds_resume_t)(JNIEnv *env, jobject obj) SOFTFP;
-typedef void (*angrybirds_mixdata_t)(JNIEnv *env, jobject obj, jlong paramLong, jbyteArray paramArrayOfByte, jint paramInt) SOFTFP;
-typedef void (*angrybirds_deinit_t)(JNIEnv *env, jobject obj) SOFTFP;
+typedef void (*worms_init_t)(JNIEnv *env, jobject obj) SOFTFP;
+typedef void (*worms_input_t)(JNIEnv *env, jobject obj, jint action, jfloat x, jfloat y, jint finger) SOFTFP;
+typedef jboolean (*worms_update_t)(JNIEnv *env, jobject obj) SOFTFP;
+typedef void (*worms_pause_t)(JNIEnv *env, jobject obj) SOFTFP;
+typedef void (*worms_resume_t)(JNIEnv *env, jobject obj) SOFTFP;
+typedef void (*worms_deinit_t)(JNIEnv *env, jobject obj) SOFTFP;
+/*typedef jint (*worms_config_get_t)(JNIEnv *env, jobject obj, jstring paramString, jint paramInt) SOFTFP;
+typedef jint (*worms_config_get_int_t)(JNIEnv *env, jobject obj, jstring paramString1, jstring paramString2, jint *paramArrayOfInt) SOFTFP;
+typedef jint (*worms_config_get_string_t)(JNIEnv *env, jobject obj, jstring paramString1, jstring paramString2, jstring *paramArrayOfString) SOFTFP;
+typedef void (*worms_debug_trace_line_t)(JNIEnv *env, jobject obj, jstring paramString) SOFTFP;
+typedef void (*worms_device_yield_t)(JNIEnv *env, jobject obj, jint paramInt) SOFTFP;*/
 
 
 struct SupportModulePriv {
     jni_onload_t JNI_OnLoad;
-    angrybirds_init_t native_init;
-    angrybirds_resize_t native_resize;
-    angrybirds_update_t native_update;
-    angrybirds_input_t native_input;
-    angrybirds_pause_t native_pause;
-    angrybirds_resume_t native_resume;
-    angrybirds_mixdata_t native_mixdata;
-    angrybirds_deinit_t native_deinit;
+    jni_onunload_t JNI_OnUnLoad;
+    worms_init_t native_init;
+    worms_update_t native_update;
+    worms_input_t native_input;
+    worms_pause_t native_pause;
+    worms_resume_t native_resume;
+    worms_deinit_t native_deinit;
+    /*worms_config_get_t native_config;
+    worms_config_get_int_t native_config_int;
+    worms_config_get_string_t native_config_string;
+    worms_debug_trace_line_t native_trace_line;
+    worms_device_yield_t native_device_yield;*/
     const char *myHome;
 };
-static struct SupportModulePriv angrybirds_priv;
+static struct SupportModulePriv worms_priv;
 
 /* Audio specs and handle */
 SDL_AudioSpec *desired, *obtained;
@@ -77,13 +84,12 @@ jlong audioHandle;
 
 /* Global application state so we can call this from override thingie */
 struct GlobalState *global;
-
-char *angrybirds_libname;
+char *worms_libname;
 
 /* Fill audio buffer */
 void my_audio_callback(void *ud, Uint8 *stream, int len)
 {
-    angrybirds_priv.native_mixdata(ENV(global), VM(global), audioHandle, stream, len);
+    //worms_priv.native_mixdata(ENV(global), VM(global), audioHandle, stream, len);
 }
 
 
@@ -111,7 +117,7 @@ JNIEnv_NewObjectV(JNIEnv *env, jclass p1, jmethodID p2, va_list p3)
 {
     struct dummy_jclass *clazz = p1;
     MODULE_DEBUG_PRINTF("module_JNIEnv_NewObjectV(%x, %s, %s)\n", p1, p2->name, clazz->name);
-    if (strcmp(clazz->name, "com/rovio/ka3d/AudioOutput") == 0)
+    if (strcmp(clazz->name, "com/ideaworks3d/airplay/SoundPlayer") == 0)
     {
         /* Open the audio device */
         desired = malloc(sizeof(SDL_AudioSpec));
@@ -122,7 +128,7 @@ JNIEnv_NewObjectV(JNIEnv *env, jclass p1, jmethodID p2, va_list p3)
         desired->freq = va_arg(p3, int);
         desired->channels = va_arg(p3, int);
         desired->format = AUDIO_S16SYS;
-        jint bitrate = va_arg(p3, int); 
+        jint bitrate = va_arg(p3, int);
         desired->samples = va_arg(p3, int) / 8;
         desired->callback=my_audio_callback;
         desired->userdata=NULL;
@@ -149,7 +155,7 @@ JNIEnv_CallObjectMethodV(JNIEnv *env, jobject p1, jmethodID p2, va_list p3)
         strcat(tmp, str->data);
 
         size_t file_size;
-	struct dummy_byte_array *result = malloc(sizeof(struct dummy_byte_array));
+	    struct dummy_byte_array *result = malloc(sizeof(struct dummy_byte_array));
 
         global->read_file(tmp, &result->data, &file_size);
 
@@ -172,16 +178,33 @@ JNIEnv_DeleteLocalRef(JNIEnv* p0, jobject p1)
 }
 
 static int
-angrybirds_try_init(struct SupportModule *self)
+worms_try_init(struct SupportModule *self)
 {
-    self->priv->native_init = (angrybirds_init_t)LOOKUP_M("ka3d_MyRenderer_nativeInit");
-    self->priv->native_resize = (angrybirds_resize_t)LOOKUP_M("ka3d_MyRenderer_nativeResize");
-    self->priv->native_input = (angrybirds_input_t)LOOKUP_M("ka3d_MyRenderer_nativeInput");
-    self->priv->native_update = (angrybirds_update_t)LOOKUP_M("ka3d_MyRenderer_nativeUpdate");
-    self->priv->native_pause = (angrybirds_pause_t)LOOKUP_M("ka3d_MyRenderer_nativePause");
-    self->priv->native_resume = (angrybirds_resume_t)LOOKUP_M("ka3d_MyRenderer_nativeResume");
-    self->priv->native_mixdata = (angrybirds_mixdata_t)LOOKUP_M("ka3d_AudioOutput_nativeMixData");
-    self->priv->native_deinit = (angrybirds_deinit_t)LOOKUP_M("ka3d_MyRenderer_nativeDeinit");
+    printf("Trying %s\n", LOOKUP_M("Java_com_ideaworks3d_airplay_AirplayThread_initNative"));
+
+    self->priv->JNI_OnLoad = (jni_onload_t)LOOKUP_M("JNI_OnLoad");
+    self->priv->JNI_OnUnLoad = (jni_onunload_t)LOOKUP_M("JNI_OnUnLoad");
+    self->priv->native_init = (worms_init_t)LOOKUP_M("airplay_AirplayThread_initNative");
+    self->priv->native_input = (worms_input_t)LOOKUP_M("onMotionEvent");
+    self->priv->native_update = (worms_update_t)LOOKUP_M("runOnOSTickNative");
+    self->priv->native_pause = (worms_pause_t)LOOKUP_M("onPauseNative");
+    self->priv->native_resume = (worms_resume_t)LOOKUP_M("resumeAppThreads");
+    self->priv->native_deinit = (worms_deinit_t)LOOKUP_M("shutdownNative");
+
+    printf("OnLoad: %s\n", self->priv->JNI_OnLoad ? "true" : "false");
+    printf("OnUnLoad: %s\n", self->priv->JNI_OnUnLoad ? "true" : "false");
+    printf("init: %s\n", self->priv->native_init ? "true" : "false");
+    printf("input: %s\n", self->priv->native_input ? "true" : "false");
+    printf("update: %s\n", self->priv->native_update ? "true" : "false");
+    printf("pause: %s\n", self->priv->native_pause ? "true" : "false");
+    printf("resume: %s\n", self->priv->native_resume ? "true" : "false");
+    printf("deinit: %s\n", self->priv->native_deinit ? "true" : "false");
+
+    // self->priv->native_config = (worms_config_get_t)LOOKUP_M("airplay_AirplayAPI_s3eConfigGet");
+    // self->priv->native_config_int = (worms_config_get_int_t)LOOKUP_M("airplay_AirplayAPI_s3eConfigGetInt");
+    // self->priv->native_config_string = (worms_config_get_string_t)LOOKUP_M("airplay_AirplayAPI_s3eConfigGetString");
+    // self->priv->native_trace_line = (worms_debug_trace_line_t)LOOKUP_M("airplay_AirplayAPI_s3eDebugTraceLine");
+    // self->priv->native_device_yield = (worms_device_yield_t)LOOKUP_M("airplay_AirplayAPI_s3eDeviceYield");
 
     /* Overrides for JNIEnv_ */
     self->override_env.CallObjectMethodV = JNIEnv_CallObjectMethodV;
@@ -189,56 +212,97 @@ angrybirds_try_init(struct SupportModule *self)
     self->override_env.CallVoidMethodV = JNIEnv_CallVoidMethodV;
     self->override_env.NewObjectV = JNIEnv_NewObjectV;
 
-    return (self->priv->native_init != NULL &&
-            self->priv->native_resize != NULL &&
+    return (self->priv->JNI_OnLoad != NULL &&
+            self->priv->JNI_OnUnLoad != NULL /*&&
+            self->priv->native_init != NULL &&
             self->priv->native_input != NULL &&
             self->priv->native_update != NULL &&
             self->priv->native_pause != NULL &&
             self->priv->native_resume != NULL &&
-            self->priv->native_mixdata != NULL &&
-            self->priv->native_deinit != NULL);
+            self->priv->native_deinit != NULL /*&&
+            self->priv->native_config != NULL &&
+            self->priv->native_config_int != NULL &&
+            self->priv->native_config_string != NULL &&
+            self->priv->native_trace_line != NULL &&
+            self->priv->native_device_yield != NULL*/);
 }
 
 static void
-angrybirds_init(struct SupportModule *self, int width, int height, const char *home)
+worms_init(struct SupportModule *self, int width, int height, const char *home)
 {
     MODULE_DEBUG_PRINTF("Module: Init(%i,%i,%s)\n",width,height,home);
 
     self->priv->myHome = strdup(home);
     global = GLOBAL_M;
-    self->priv->native_init(ENV_M, GLOBAL_M, width, height, GLOBAL_M->env->NewStringUTF(ENV_M, home));
+
+    self->priv->JNI_OnLoad(VM_M, NULL);
+
+    self->priv->native_init(ENV_M, GLOBAL_M);
 }
 
 static void
-angrybirds_input(struct SupportModule *self, int event, int x, int y, int finger)
+worms_input(struct SupportModule *self, int event, int x, int y, int finger)
 {
     self->priv->native_input(ENV_M, GLOBAL_M, event, x, y, finger);
 }
 
 static void
-angrybirds_update(struct SupportModule *self)
+worms_update(struct SupportModule *self)
 {
     self->priv->native_update(ENV_M, GLOBAL_M);
 }
 
 static void
-angrybirds_deinit(struct SupportModule *self)
+worms_deinit(struct SupportModule *self)
 {
     self->priv->native_deinit(ENV_M, GLOBAL_M);
+
+    self->priv->JNI_OnUnLoad(VM_M, NULL);
+
     SDL_CloseAudio();
 }
 
 static void
-angrybirds_pause(struct SupportModule *self)
+worms_pause(struct SupportModule *self)
 {
     self->priv->native_pause(ENV_M, GLOBAL_M);
 }
 
 static void
-angrybirds_resume(struct SupportModule *self)
+worms_resume(struct SupportModule *self)
 {
     self->priv->native_resume(ENV_M, GLOBAL_M);
 }
 
-APKENV_MODULE(angrybirds, MODULE_PRIORITY_GAME)
+/*static int
+worms_config_get(struct SupportModule *self, char *paramString, int paramInt)
+{
+    self->priv->native_config(ENV_M, GLOBAL_M, paramString, paramInt);
+}
+
+static int
+worms_config_get_int(struct SupportModule *self, char *paramString1, char *paramString2, int *paramArrayOfInt)
+{
+    self->priv->native_config_int(ENV_M, GLOBAL_M, paramString1, paramString2, paramArrayOfInt);
+}
+
+static int
+worms_config_get_string(struct SupportModule *self, char *paramString1, char *paramString2, void **paramArrayOfString)
+{
+    self->priv->native_config_string(ENV_M, GLOBAL_M, paramString1, paramString2, paramArrayOfString);
+}
+
+static void
+worms_debug_trace_line(struct SupportModule *self, char *paramString)
+{
+    self->priv->native_trace_line(ENV_M, GLOBAL_M, paramString);
+}
+
+static void
+worms_device_yield(struct SupportModule *self, int paramInt)
+{
+    self->priv->native_device_yield(ENV_M, GLOBAL_M, paramInt);
+}*/
+
+APKENV_MODULE(worms, MODULE_PRIORITY_GAME)
 

@@ -47,7 +47,7 @@ apk_open(const char *filename)
 }
 
 char *
-apk_get_shared_library(AndroidApk *apk)
+apk_get_shared_library(AndroidApk *apk, char *libname)
 {
     assert(apk != NULL);
 
@@ -63,7 +63,7 @@ apk_get_shared_library(AndroidApk *apk)
     do {
         if (unzGetCurrentFileInfo(apk->zip, NULL, filename, sizeof(filename),
                     NULL, 0, NULL, 0) == UNZ_OK) {
-            if (memcmp(filename, "lib/armeabi", 11) == 0) {
+            if (strstr(filename, "lib/armeabi") != NULL && ((libname != NULL && strstr(filename, libname) != NULL) || libname == NULL)) {
                 if (unzOpenCurrentFile(apk->zip) == UNZ_OK) {
                     strcpy(filename, "/home/user/.apkenv-XXXXXX");
                     int fd = mkstemp(filename);

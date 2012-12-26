@@ -46,7 +46,7 @@ typedef void (*apk_for_each_file_callback)(const char *filename, char *buffer, s
 
 /* apklib.c */
 AndroidApk *apk_open(const char *filename);
-char *apk_get_shared_library(AndroidApk *apk);
+char *apk_get_shared_library(AndroidApk *apk, char *libname);
 enum ApkResult apk_read_file(AndroidApk *apk, const char *filename, char **buffer, size_t *size);
 void apk_for_each_file(AndroidApk *apk, const char *prefix, apk_for_each_file_callback callback);
 void apk_close(AndroidApk *apk);
