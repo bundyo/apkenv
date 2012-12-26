@@ -403,16 +403,12 @@ int main(int argc, char **argv)
     global.jni_library = android_dlopen(shlib, RTLD_LAZY);
     unlink(shlib);
     if (!(global.jni_library)) {
-        printf("Missing library dependencies. Found methods:\n");
-        /*tmp = global.method_table;
-        while (*tmp) {
-            printf("    %s\n", *tmp);
-            tmp++;
-        }*/
+        printf("Missing library dependencies.\n");
         return 0;
     }
 
     /* Search for a suitable module to handle the library */
+    module = global.support_modules;
     while (module != NULL) {
         printf("Trying %s\n", module->filename);
         if (module->try_init(module)) {
